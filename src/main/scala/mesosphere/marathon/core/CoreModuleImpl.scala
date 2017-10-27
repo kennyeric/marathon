@@ -107,7 +107,7 @@ class CoreModuleImpl @Inject() (
     // infrastructure
     clock, random, marathonConf, actorSystem.scheduler,
     leadershipModule,
-    () => marathonScheduler.getHomeRegion
+    () => marathonScheduler.getLocalRegion
   )
 
   private[this] lazy val offerMatcherReconcilerModule =
@@ -153,7 +153,7 @@ class CoreModuleImpl @Inject() (
     // external guice dependencies
     taskTrackerModule.instanceTracker,
     launcherModule.taskOpFactory,
-    () => marathonScheduler.getHomeRegion
+    () => marathonScheduler.getLocalRegion
   )
 
   // PLUGINS

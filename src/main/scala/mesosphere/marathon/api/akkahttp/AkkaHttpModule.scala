@@ -73,7 +73,8 @@ class AkkaHttpModule(conf: MarathonConf with HttpConf) extends AbstractModule {
     val pluginsController = new PluginsController(pluginManager.plugins[HttpRequestHandler], pluginManager.definitions)
     val leaderController = LeaderController(electionService, storageModule.runtimeConfigurationRepository)
     val queueController = new QueueController(clock, launchQueue, electionService)
-    val tasksController = new TasksController(instanceTracker, groupManager, healthCheckManager, electionService)
+    val tasksController = new TasksController(instanceTracker, groupManager, healthCheckManager, taskKiller, electionService)
+    val podsController = new PodsController(electionService, groupManager)
 
     val v2Controller = new V2Controller(
       appsController,
@@ -82,7 +83,8 @@ class AkkaHttpModule(conf: MarathonConf with HttpConf) extends AbstractModule {
       infoController,
       leaderController,
       queueController,
-      tasksController)
+      tasksController,
+      podsController)
 
     new AkkaHttpMarathonService(
       conf,

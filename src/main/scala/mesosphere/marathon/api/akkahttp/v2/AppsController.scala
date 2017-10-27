@@ -12,7 +12,7 @@ import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.server.{ Directive1, Rejection, RejectionError, Route }
 import mesosphere.marathon.api.akkahttp.AuthDirectives.NotAuthorized
-import mesosphere.marathon.api.akkahttp.PathMatchers.ExistingAppPathId
+import mesosphere.marathon.api.akkahttp.PathMatchers.ExistingRunSpecId
 import mesosphere.marathon.api.v2.{ AppHelpers, AppNormalization, InfoEmbedResolver, LabelSelectorParsers }
 import mesosphere.marathon.api.akkahttp.{ Controller, EntityMarshallers }
 import mesosphere.marathon.api.v2.AppHelpers.{ appNormalization, appUpdateNormalization, authzSelector }
@@ -299,7 +299,28 @@ class AppsController(
     }
   }
 
-  private def restartApp(appId: PathId)(implicit identity: Identity): Route = ???
+  private def restartApp(appId: PathId)(implicit identity: Identity): Route = {
+    forceParameter { force =>
+      val newVersion = clock.now()
+      onSuccessLegacy(Some(appId))(
+        groupManager.updateApp(
+          appId,
+          markAppForRestarting(appId),
+          newVersion, force)
+      ).apply { restartDeployment =>
+          completeWithDeploymentForApp(appId, restartDeployment)
+        }
+    }
+  }
+
+  private[v2] def markAppForRestarting(appId: PathId)(implicit identity: Identity): Option[AppDefinition] => AppDefinition = { maybeAppDef =>
+    val appDefinition = maybeAppDef.getOrElse(throw RejectionError(Rejections.EntityNotFound.noApp(appId)))
+    if (authorizer.isAuthorized(identity, UpdateRunSpec, appDefinition)) {
+      appDefinition.markedForRestarting
+    } else {
+      throw RejectionError(NotAuthorized(HttpPluginFacade.response(authorizer.handleNotAuthorized(identity, _))))
+    }
+  }
 
   private def listRunningTasks(appId: PathId)(implicit identity: Identity): Route = ???
 
@@ -338,7 +359,7 @@ class AppsController(
             createApp
           }
         } ~
-        pathPrefix(ExistingAppPathId(groupManager.rootGroup)) { appId =>
+        pathPrefix(ExistingRunSpecId(groupManager.rootGroup)) { appId =>
           pathEndOrSingleSlash {
             get {
               showApp(appId)
