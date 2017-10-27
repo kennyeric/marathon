@@ -124,7 +124,6 @@ class EventsControllerTest extends AkkaUnitTest with Inside {
       .map(_.`type`)
       .runWith(Sink.queue())
 
-    f.leaderStateEventsInput.offer(LeadershipTransition.Standby)
     inside(events.pull().futureValue) {
       case Some(Some(tpe)) => tpe shouldBe "event_stream_attached"
     }
